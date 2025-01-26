@@ -55,7 +55,6 @@ jobs:
                     checkov-${{ runner.os }}-
 
             - name: Install dependencies for lint and validate
-              if: ${{ steps.cache-checkov.outputs.cache-hit != 'true' }}
               run: |
                 pip install checkov
 
