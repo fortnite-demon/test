@@ -22,23 +22,25 @@ exit 1
 log() {
     local severity="${1}"
     local message="${2}"
-    echo "[$(date +%d-%m-%Y)|$(date +%H:%M:%S.%2N)] |${severity}|: ${message}" | tee "${LOG_PATH}" >&2
+    local log_path="${LOG_PATH}"
+    echo "[$(date +%d-%m-%Y)|$(date +%H:%M:%S.%2N)] |${severity}| ${message}" | tee -a "${log_path}" >&2
 }
 
 validate_log_file() {
     local log_file_dirname="$(dirname $LOG_PATH)"
+    local log_path="${LOG_PATH}"
 
     # If log file exists and not access to write, script end with exit code 1
-    if [[ -f $LOG_PATH ]]; then
-        if [[ ! -w $LOG_PATH ]]; then
-            echo "Log file [ ${LOG_PATH} ] not access to write!" >&2
+    if [[ -f $log_path ]]; then
+        if [[ ! -w $log_path ]]; then
+            echo "Log file [ ${log_path} ] not access to write!" >&2
             exit 1
         fi
         return 0
     fi
     # If log file is directory, script end with exit code 1
-    if [[ -d $LOG_PATH ]]; then
-        echo "Log file [ ${LOG_PATH} ] is directory!" >&2
+    if [[ -d $log_path ]]; then
+        echo "Log file [ ${log_path} ] is directory!" >&2
         exit 1
     fi
     # If you do not have write permissions to the directory where the backup is located, script end with exit code 1.
@@ -47,19 +49,22 @@ validate_log_file() {
         exit 1
     fi
 
-    touch "${LOG_PATH}"
+    touch "${log_path}"
 }
 
 validate_dirs() {
+    local dest_dir="${DEST_DIR}"
+    local src_dir="${SRC_DIR}"
+
     # If dest dir or src dir not exists or not is directory, then exit 1
-    if [[ -d $DEST_DIR && -d $SRC_DIR ]]; then
+    if [[ -d $dest_dir && -d $src_dir ]]; then
         # If dest dir not perm to write or src dir not perm to read, then exit 1
-        if [[ ! -w $DEST_DIR || ! -r $SRC_DIR ]]; then
-            log "ERROR" "dest dir: [ ${DEST_DIR} ] not permission to write or src dir: [ ${SRC_DIR} ] not permission to read"
+        if [[ ! -w $dest_dir || ! -r $src_dir ]]; then
+            log "ERROR" "dest dir: [ ${dest_dir} ] not permission to write or src dir: [ ${src_dir} ] not permission to read"
             exit 1
         fi
     else
-        log "ERROR" "dest dir: [ ${DEST_DIR} ] or src dir: [ ${SRC_DIR} ], not exists or not is directory"
+        log "ERROR" "dest dir: [ ${dest_dir} ] or src dir: [ ${src_dir} ], not exists or not is directory"
         exit 1
     fi
 }
