@@ -1,0 +1,210 @@
+name: Delivery-Terraform-Code
+
+on:
+    push:
+        branches:
+            - 'master'
+    pull_request:
+        branches: 
+            - 'master'
+    workflow_dispatch: 
+        inputs:
+            deploy:
+                default: false
+                type: boolean
+                required: false
+
+env:
+    PLAN_ARTIFACT: terraform-plan
+
+jobs:
+    lint-and-validate:
+        name: Lint-and-validate
+        runs-on: ubuntu-latest
+        permissions: 
+            contents: read
+        steps:
+            - name: Terraform setup
+              uses: hashicorp/setup-terraform@v3
+
+            - name: Setup python
+              uses: actions/setup-python@v5
+              with:
+                python-version: '3.13'
+            
+            - name: Code checkout
+              uses: actions/checkout@v4
+
+            - name: Cache checkov
+              uses: actions/cache@v4
+              id: cache-checkov
+              with:
+                path: ~/.cache/pip
+                key: checkov-${{ runner.os }}-${{ github.workflow }}
+                restore-keys: |
+                    checkov-${{ runner.os }}-
+
+            - name: Install dependencies for lint and validate
+              if: ${{ steps.cache-checkov.outputs.cache-hit != 'true' }}
+              run: |
+                pip install checkov
+
+            - name: Cache terraform providers
+              uses: actions/cache@v4
+              id: cache-tf-providers
+              with:
+                path: ./terraform/.terraform
+                key: terraform-providers-${{ runner.os }}-${{ github.workflow }}-${{ hashFiles('./terraform/versions.tf') }}
+
+            - name: Add provider installation from mirror
+              if: ${{ steps.cache-tf-providers.outputs.cache-hit != 'true' }}
+              run: |-
+                echo "\
+                provider_installation {
+                  network_mirror {
+                    url = "https://terraform-mirror.yandexcloud.net/"
+                    include = ["registry.terraform.io/*/*"]
+                  }
+                  direct {
+                    exclude = ["registry.terraform.io/*/*"]
+                  }
+                }" >> ~/.terraformrc
+
+            - name: Terraform initialize
+              if: ${{ steps.cache-tf-providers.outputs.cache-hit != 'true' }}
+              working-directory: ./terraform
+              run: terraform init -input=false
+
+            - name: Terraform validate
+              working-directory: ./terraform
+              run: |
+                terraform validate -json |\
+                  jq '"*TERRAFORM VALIDATE*" + "\n\nValid: \(.valid)" + "\nTotal errors: \(.error_count)" + "\nWarning count: \(.warning_count)"' |\
+                    xargs echo -e >> $GITHUB_STEP_SUMMARY
+
+            - name: Checkov validate
+              working-directory: ./terraform
+              run: |
+                checkov -o json -d . |\
+                  jq '"*CHECKOV*" + "\n\nPassed: \(.passed)" + "\nFailed: \(.failed)" + "\nSkipped: \(.skipped)" + "\nParsing errors: \(.parsing_errors)"' |\
+                    xargs echo -e >> $GITHUB_STEP_SUMMARY
+
+    plan:
+        name: Terraform-Plan
+        runs-on: ubuntu-latest
+        needs: [
+            lint-and-validate
+        ]
+        permissions: 
+            contents: read
+        env:
+            YC_TOKEN: mock-token
+        steps:
+            - name: Terraform setup
+              uses: hashicorp/setup-terraform@v3
+
+            - name: Code checkout
+              uses: actions/checkout@v4
+
+            - name: Cache terraform providers
+              uses: actions/cache@v4
+              id: cache-tf-providers
+              with:
+                path: ./terraform/.terraform
+                key: terraform-providers-${{ runner.os }}-${{ github.workflow }}-${{ hashFiles('./terraform/versions.tf') }}
+
+            - name: Add provider installation from mirror
+              if: ${{ steps.cache-tf-providers.outputs.cache-hit != 'true' }}
+              run: |-
+                echo "\
+                provider_installation {
+                  network_mirror {
+                    url = "https://terraform-mirror.yandexcloud.net/"
+                    include = ["registry.terraform.io/*/*"]
+                  }
+                  direct {
+                    exclude = ["registry.terraform.io/*/*"]
+                  }
+                }" >> ~/.terraformrc
+
+            - name: Terraform initialize
+              if: ${{ steps.cache-tf-providers.outputs.cache-hit != 'true' }}
+              working-directory: ./terraform
+              run: terraform init -input=false
+
+            - name: Terraform plan
+              working-directory: ./terraform
+              run: terraform plan -input=false -out=./tfplan
+
+            - name: Upload plan
+              uses: actions/upload-artifact@v4
+              with:
+                name: ${{ env.PLAN_ARTIFACT }}
+                path: ./terraform/tfplan
+                if-no-files-found: error
+
+    deploy:
+        name: Deploy-Terraform-Infra
+        needs: [
+            lint-and-validate,
+            plan
+        ]
+        if: ${{ github.event.inputs.deploy == 'true' }}
+        runs-on: ubuntu-latest
+        permissions: 
+            contents: read
+        steps:
+            - name: Terraform setup
+              uses: hashicorp/setup-terraform@v3
+
+            - name: Code checkout
+              uses: actions/checkout@v4
+
+            - name: Cache terraform providers
+              uses: actions/cache@v4
+              id: cache-tf-providers
+              with:
+                path: ./terraform/.terraform
+                key: terraform-providers-${{ runner.os }}-${{ github.workflow }}-${{ hashFiles('./terraform/versions.tf') }}
+
+            - name: Add provider installation from mirror
+              if: ${{ steps.cache-tf-providers.outputs.cache-hit != 'true' }}
+              run: |-
+                echo "\
+                provider_installation {
+                  network_mirror {
+                    url = "https://terraform-mirror.yandexcloud.net/"
+                    include = ["registry.terraform.io/*/*"]
+                  }
+                  direct {
+                    exclude = ["registry.terraform.io/*/*"]
+                  }
+                }" >> ~/.terraformrc
+
+            - name: Terraform initialize
+              if: ${{ steps.cache-tf-providers.outputs.cache-hit != 'true' }}
+              working-directory: ./terraform
+              run: terraform init -input=false
+
+            - name: Download plan
+              uses: actions/download-artifact@v4
+              with:
+                name: ${{ env.PLAN_ARTIFACT }}
+                path: ./terraform
+
+            - name: Get IAM token
+              id: token
+              uses: fortnite-demon/test/.github/actions/yc-get-iam@master
+              with:
+                sa-keys: ${{ secrets.SA_KEYS }}
+
+            - name: Terraform apply
+              working-directory: ./terraform
+              env:
+                YC_TOKEN: ${{ steps.token.outputs.token }}
+                YC_FOLDER_ID: ${{ secrets.YC_FOLDER_ID }}
+                YC_CLOUD_ID: ${{ secrets.YC_CLOUD_ID }} 
+              run: |
+                terraform apply -auto-approve -lock-timeout=10m tfplan
+              
+
