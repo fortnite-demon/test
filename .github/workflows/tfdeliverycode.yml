@@ -63,7 +63,9 @@ jobs:
               uses: actions/cache@v4
               id: cache-tf-providers
               with:
-                path: ./terraform/.terraform
+                path: |
+                  ./terraform/.terraform
+                  ./terraform/.terraform.lock.hcl
                 key: terraform-providers-${{ runner.os }}-${{ github.workflow }}-${{ hashFiles('./terraform/versions.tf') }}
 
             - name: Add provider installation from mirror
@@ -110,7 +112,9 @@ jobs:
               uses: actions/cache@v4
               id: cache-tf-providers
               with:
-                path: ./terraform/.terraform
+                path: |
+                  ./terraform/.terraform
+                  ./terraform/.terraform.lock.hcl
                 key: terraform-providers-${{ runner.os }}-${{ github.workflow }}-${{ hashFiles('./terraform/versions.tf') }}
 
             - name: Add provider installation from mirror
@@ -154,7 +158,9 @@ jobs:
               uses: actions/cache@v4
               id: cache-tf-providers
               with:
-                path: ./terraform/.terraform
+                path: |
+                  ./terraform/.terraform
+                  ./terraform/.terraform.lock.hcl
                 key: terraform-providers-${{ runner.os }}-${{ github.workflow }}-${{ hashFiles('./terraform/versions.tf') }}
 
             - name: Add provider installation from mirror
