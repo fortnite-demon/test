@@ -74,8 +74,8 @@ validate_dirs() {
 backup() {
     local src_dir="${SRC_DIR}"
     local dest_dir="${DEST_DIR}"
-    local archive_name="${ARCHIVE_NAME}-${ARCHIVE_SUFFIX_NAME}.tar.gz"
-    local temp_output_file="$(mktmep --suffix=tar-output-backupsh)"
+    local archive_name="${ARCHIVE_NAME}-$($ARCHIVE_SUFFIX_NAME).tar.gz"
+    local temp_output_file="$(mktemp --suffix=tar-output-backupsh)"
 
     trap "rm -rf ${temp_output_file} &> /dev/null ; exit 1" SIGINT SIGTERM SIGHUP
 
@@ -85,7 +85,7 @@ backup() {
         log "CRITICAL" "BACKUP PROCESS FAILED! dest: ${dest_dir} src: ${src_dir}. TAR OUTPUT FILE: ${temp_output_file}"
         exit 1
     fi
-    log "INFO" "Backup process SUCCESS! Backup: ${archive_name}, size: $(stat ${dest_dir}/${archive_name} | awk '/.*Size\:/{print $2 / 1024^3}')"
+    log "INFO" "Backup process SUCCESS! Backup: ${archive_name}, size: $(stat ${dest_dir}/${archive_name} | awk '/.*Size\:/{print $2 / 1024^3"GB"}')"
 
     rm -rf ${temp_output_file} &> /dev/null
 }
@@ -122,3 +122,5 @@ fi
 validate_log_file
 
 validate_dirs
+
+backup
