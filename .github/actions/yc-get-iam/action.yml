@@ -1,0 +1,42 @@
+name: Get-YC-IAM-token
+author: mearme
+description: Get IAM token for Yandex Cloud authenticate
+inputs:
+  sa-keys:
+    required: true
+    description: SA keys for obtaining a token
+outputs:
+  token:
+    value: ${{ steps.token.outputs.token }}
+    description: IAM token
+runs:
+  using: composite
+  steps:
+    - name: Install YC
+      run: |
+        curl -sSL https://storage.yandexcloud.net/yandexcloud-yc/install.sh | bash -s -- -i /opt/yc -n
+      shell: bash
+
+    - name: Check install step on failed
+      if: failed()
+      run: |
+        echo "Install YC CLI step failed!"
+        exit 1
+      shell: bash
+
+    - name: Configure YC path
+      run: |
+        echo "/opt/yc/bin" >> $GITHUB_PATH
+      shell: bash
+
+    - name: Configure YC profile
+      run: |
+        yc config profile create github-terraform-delivery
+        echo ${{ inputs.sa-keys }} | yc config set service-account-key /dev/stdin
+      shell: bash
+
+    - name: Get IAM token
+      id: token
+      run: |
+        echo "token=$(yc iam create-token)" >> $GITHUB_OUTPUT
+      shell: bash
