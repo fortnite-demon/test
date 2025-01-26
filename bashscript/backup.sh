@@ -2,6 +2,7 @@
 
 SRC_DIR=""
 DEST_DIR=""
+SIENCE_MODE=/usr/bin/false
 LOG_PATH="/var/log/backupsh/error.log"
 
 usage() {
@@ -13,14 +14,15 @@ Options:
   [ -l <path-to-log-file> ]: Path to log file, default: /var/log/backupsh/error.log
   [ -d <path-to-dest-dir> ]: Dir for saved backups, default: null
   [ -b <path-to-src-dir> ]:  Which directory will we backup, default: null
-  [ -h <print-help-msg> ]:   Print this message" >&2
+  [ -s ]:                    Since mode, not print debug messages, default: false
+  [ -h ]:                    Print this message" >&2
 exit 1
 }
 
 log() {
     local severity="${1}"
     local message="${2}"
-    echo "[$(date +%d-%m-%Y)|$(date +%H:%M:%S.%2N)] |${severity}|: ${message}" | tee "${LOG_PATH}"
+    echo "[$(date +%d-%m-%Y)|$(date +%H:%M:%S.%2N)] |${severity}|: ${message}" | tee "${LOG_PATH}" >&2
 }
 
 validate_log_file() {
@@ -44,9 +46,11 @@ validate_log_file() {
         echo "Log file directory [ ${log_file_dirname} ] not access to write!" >&2
         exit 1
     fi
+
+    touch "${LOG_PATH}"
 }
 
-while getopts ":l:d:b:h" opt; do
+while getopts ":l:d:b:hs" opt; do
     case $opt in
         l) LOG_PATH="${OPTARG}"
         ;;
@@ -55,6 +59,8 @@ while getopts ":l:d:b:h" opt; do
         b) SRC_DIR="${OPTARG}"
         ;;
         h) usage
+        ;;
+        s) SIENCE_MODE=/usr/bin/true
         ;;
        \?)
            echo "Invalid option [ -${OPTARG} ]" >&2
@@ -66,3 +72,9 @@ while getopts ":l:d:b:h" opt; do
         ;;
     esac
 done
+
+if $SIENCE_MODE; then
+    exec 2>/dev/null
+fi
+
+validate_log_file
