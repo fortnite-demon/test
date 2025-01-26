@@ -50,6 +50,20 @@ validate_log_file() {
     touch "${LOG_PATH}"
 }
 
+validate_dirs() {
+    # If dest dir or src dir not exists or not is directory, then exit 1
+    if [[ -d $DEST_DIR && -d $SRC_DIR ]]; then
+        # If dest dir not perm to write or src dir not perm to read, then exit 1
+        if [[ ! -w $DEST_DIR || ! -r $SRC_DIR ]]; then
+            log "ERROR" "dest dir: [ ${DEST_DIR} ] not permission to write or src dir: [ ${SRC_DIR} ] not permission to read"
+            exit 1
+        fi
+    else
+        log "ERROR" "dest dir: [ ${DEST_DIR} ] or src dir: [ ${SRC_DIR} ], not exists or not is directory"
+        exit 1
+    fi
+}
+
 while getopts ":l:d:b:hs" opt; do
     case $opt in
         l) LOG_PATH="${OPTARG}"
@@ -78,3 +92,5 @@ if $SIENCE_MODE; then
 fi
 
 validate_log_file
+
+validate_dirs
