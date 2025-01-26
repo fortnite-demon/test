@@ -119,6 +119,11 @@ if $SIENCE_MODE; then
     exec 2>/dev/null
 fi
 
+if [[ -z $ARCHIVE_NAME ]]; then
+    echo "Archive name is null!" >&2
+    usage
+fi
+
 validate_log_file
 
 validate_dirs
