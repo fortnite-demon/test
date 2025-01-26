@@ -3,6 +3,8 @@
 SRC_DIR=""
 DEST_DIR=""
 SIENCE_MODE=/usr/bin/false
+ARCHIVE_SUFFIX_NAME="date +%d-%m-%Y_%H-%M-%S"
+ARCHIVE_NAME="backup"
 LOG_PATH="/var/log/backupsh/error.log"
 
 usage() {
@@ -69,7 +71,26 @@ validate_dirs() {
     fi
 }
 
-while getopts ":l:d:b:hs" opt; do
+backup() {
+    local src_dir="${SRC_DIR}"
+    local dest_dir="${DEST_DIR}"
+    local archive_name="${ARCHIVE_NAME}-${ARCHIVE_SUFFIX_NAME}.tar.gz"
+    local temp_output_file="$(mktmep --suffix=tar-output-backupsh)"
+
+    trap "rm -rf ${temp_output_file} &> /dev/null ; exit 1" SIGINT SIGTERM SIGHUP
+
+    log "INFO" "Start backup process... dest dir: ${dest_dir} src dir: ${src_dir}"
+    tar -czvf "${dest_dir}/${archive_name}" -C "${src_dir}" . &> "${temp_output_file}"
+    if [[ $? -ne 0 ]]; then
+        log "CRITICAL" "BACKUP PROCESS FAILED! dest: ${dest_dir} src: ${src_dir}. TAR OUTPUT FILE: ${temp_output_file}"
+        exit 1
+    fi
+    log "INFO" "Backup process SUCCESS! Backup: ${archive_name}, size: $(stat ${dest_dir}/${archive_name} | awk '/.*Size\:/{print $2 / 1024^3}')"
+
+    rm -rf ${temp_output_file} &> /dev/null
+}
+
+while getopts ":l:d:b:hsn:" opt; do
     case $opt in
         l) LOG_PATH="${OPTARG}"
         ;;
@@ -78,6 +99,8 @@ while getopts ":l:d:b:hs" opt; do
         b) SRC_DIR="${OPTARG}"
         ;;
         h) usage
+        ;;
+        n) ARCHIVE_NAME="${OPTARG}"
         ;;
         s) SIENCE_MODE=/usr/bin/true
         ;;
