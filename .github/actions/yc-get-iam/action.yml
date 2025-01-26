@@ -18,7 +18,7 @@ runs:
       shell: bash
 
     - name: Check install step on failed
-      if: failed()
+      if: failure()
       run: |
         echo "Install YC CLI step failed!"
         exit 1
@@ -32,7 +32,9 @@ runs:
     - name: Configure YC profile
       run: |
         yc config profile create github-terraform-delivery
-        echo ${{ inputs.sa-keys }} | yc config set service-account-key /dev/stdin
+        echo '${{ inputs.sa-keys }}' >> sa-keys.json
+        yc config set service-account-key ./sa-keys.json
+        rm -rf ./sa-keys.json
       shell: bash
 
     - name: Get IAM token
