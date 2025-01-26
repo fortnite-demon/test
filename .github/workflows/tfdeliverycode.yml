@@ -88,7 +88,7 @@ jobs:
             - name: Checkov validate
               working-directory: ./terraform
               run: |
-                checkov -o json -d . |\
+                python -m checkov -o json -d . |\
                   jq '"*CHECKOV*" + "\n\nPassed: \(.passed)" + "\nFailed: \(.failed)" + "\nSkipped: \(.skipped)" + "\nParsing errors: \(.parsing_errors)"' |\
                     xargs echo -e >> $GITHUB_STEP_SUMMARY
 
