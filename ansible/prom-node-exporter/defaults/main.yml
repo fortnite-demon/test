@@ -1,0 +1,7 @@
+---
+node_exporter:
+  user: node_exporter
+  user_comment: "Prometheus node exporter user"
+  group: monitoring
+  directory: /opt/prom_node_exporter
+  download_path: https://github.com/prometheus/node_exporter/releases/download/v1.8.2/node_exporter-1.8.2.linux-amd64.tar.gz

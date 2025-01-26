@@ -1,0 +1,14 @@
+[Unit]
+Description=Prometheus node exporter service
+After=network-online.target
+Requires=network-online.target
+
+[Service]
+ExecStart={{ node_exporter.directory }}/node_exporter
+User={{ node_exporter.user }}
+Group={{ node_exporter.group }}
+Restart=on-failure
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target

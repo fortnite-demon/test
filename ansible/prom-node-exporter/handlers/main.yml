@@ -1,0 +1,10 @@
+---
+- name: Restart node exporter service
+  become: true
+  ansible.builtin.systemd:
+    name: node_exporter
+    state: restarted
+    enabled: true
+    daemon_reload: true
+  listen: Restart node exporter
+...

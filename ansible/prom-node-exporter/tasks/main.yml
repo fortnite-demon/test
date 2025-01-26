@@ -1,0 +1,65 @@
+---
+- name: Ensure monitoring group is create
+  become: true
+  ansible.builtin.group:
+    name: "{{ node_exporter.group }}"
+    system: true
+    state: present
+
+- name: Ensure node exporter user is create
+  become: true
+  ansible.builtin.user:
+    name: "{{ node_exporter.user }}"
+    group: "{{ node_exporter.group }}"
+    system: true
+    create_home: false
+    comment: "{{ node_exporter.user_comment }}"
+    shell: /usr/sbin/nologin
+
+- name: Ensure node exporter directory is create
+  become: true
+  ansible.builtin.file:
+    state: directory
+    owner: "{{ node_exporter.user }}"
+    group: "{{ node_exporter.group }}"
+    path: "{{ node_exporter.directory }}"
+    mode: '0755'
+
+- name: Ensure node exporter archives directory is create
+  become: true
+  ansible.builtin.file:
+    state: directory
+    owner: "{{ node_exporter.user }}"
+    group: "{{ node_exporter.group }}"
+    path: "{{ node_exporter.directory }}/archives"
+    mode: '0755'
+
+- name: Ensure node exporter archive download
+  become: true
+  ansible.builtin.get_url:
+    url: "{{ node_exporter.download_path }}"
+    dest: "{{ node_exporter.directory }}/archives/{{ node_exporter.download_path | basename }}"
+    owner: "{{ node_exporter.user }}"
+    group: "{{ node_exporter.group }}"
+    mode: '0755'
+
+- name: Ensure node exporter archive is unpacked
+  become: true
+  ansible.builtin.unarchive:
+    remote_src: true
+    src: "{{ node_exporter.directory }}/archives/{{ node_exporter.download_path | basename }}"
+    dest: "{{ node_exporter.directory }}"
+    creates: "{{ node_exporter.directory }}/node_exporter"
+    owner: "{{ node_exporter.user }}"
+    group: "{{ node_exporter.group }}"
+    mode: '0755'
+    extra_opts:
+      - "--strip-components=1"
+
+- name: Ensure the service file is copied
+  become: true
+  ansible.builtin.template:
+    src: "node_exporter.service.j2"
+    dest: /etc/systemd/system/node_exporter.service
+  notify: Restart node exporter
+...
