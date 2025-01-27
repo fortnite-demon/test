@@ -4,9 +4,13 @@ on:
     push:
         branches:
             - 'master'
+        paths:
+            - 'terraform/*.tf'
     pull_request:
         branches: 
             - 'master'
+        paths:
+            - 'terraform/*.tf'
     workflow_dispatch: 
         inputs:
             deploy:
