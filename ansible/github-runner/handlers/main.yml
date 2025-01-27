@@ -1,0 +1,9 @@
+---
+- name: Restart github runner service
+  become: true
+  ansible.builtin.systemd:
+    name: github-runner
+    state: restarted
+    enabled: true
+    daemon_reload: true
+...

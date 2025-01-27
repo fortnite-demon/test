@@ -1,0 +1,13 @@
+---
+runner:
+  user: github-runner
+  group: github-runner
+  user_comment: "Github runner"
+  home_dir:
+
+  archive:
+    name: actions-runner-linux-x64-2.321.0.tar.gz
+
+  configure:
+    labels: linux,{{ ansible_architecture }}
+...

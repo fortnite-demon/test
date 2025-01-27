@@ -1,0 +1,80 @@
+---
+- name: Set fact runner home dir
+  ansible.builtin.set_fact:
+    runner_home_dir: "{{ '/home/' + runner.user if runner.home_dir is none or runner.home_dir is not defined else runner.home_dir }}"
+
+- name: Ensure runner group is create
+  become: true
+  ansible.builtin.group:
+    name: "{{ runner.group }}"
+    system: true
+    state: present
+
+- name: Ensure runner user is create
+  become: true
+  ansible.builtin.user:
+    name: "{{ runner.user }}"
+    group: "{{ runner.group }}"
+    state: present
+    system: true
+    home: "{{ runner_home_dir }}"
+    create_home: true
+    comment: "{{ runner.user_comment }}"
+
+- name: Make archives directory in runner user home dir
+  become: true
+  become_user: "{{ runner.user }}"
+  ansible.builtin.file:
+    state: directory
+    path: "{{ runner_home_dir }}/archives"
+    mode: '0755'
+
+- name: Make work-runner directory in runner user home dir
+  become: true
+  become_user: "{{ runner.user }}"
+  ansible.builtin.file:
+    state: directory
+    path: "{{ runner_home_dir }}/work-runner"
+    mode: '0755'
+
+- name: Copy runner archive to archive dir
+  become: true
+  ansible.builtin.copy:
+    src: "{{ runner.archive.name }}"
+    dest: "{{ runner_home_dir }}/archives/{{ runner.archive.name }}"
+    owner: "{{ runner.user }}"
+    group: "{{ runner.group }}"
+    mode: "0644"
+
+- name: Unarchive runner
+  become: true
+  become_user: "{{ runner.user }}"
+  ansible.builtin.unarchive:
+    remote_src: true
+    src: "{{ runner_home_dir }}/archives/{{ runner.archive.name }}"
+    dest: "{{ runner_home_dir }}/work-runner"
+    owner: "{{ runner.user }}"
+    group: "{{ runner.group }}"
+    extra_opts:
+      - "--strip-components=1"
+
+- name: Runner configure
+  become: true
+  become_user: "{{ runner.user }}"
+  ansible.builtin.shell:
+    cmd: |-
+      ./config.sh --url {{ lookup('env', 'GITHUB_RUNNER_REPO_URL') }} \
+                                                  --token {{ lookup('env', 'GITHUB_RUNNER_TOKEN') }} \
+                                                  --labels {{ runner.configure.labels }}
+    creates: "{{ runner_home_dir }}/work-runner/.runner"
+    chdir: "{{ runner_home_dir }}/work-runner"
+
+- name: Copy github runner service file
+  become: true
+  vars:
+    runner_work_dir: "{{ runner_home_dir }}/work-runner"
+  ansible.builtin.template:
+    src: github-runner.service.j2
+    dest: /etc/systemd/system/github-runner.service
+    mode: '0644'
+  notify: Restart github runner service

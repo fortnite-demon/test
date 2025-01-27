@@ -1,0 +1,22 @@
+[Unit]
+Description=GitHub runner service
+After=network-online.target
+Requires=network-online.target
+
+[Service]
+Type=simple
+User={{ runner.user }}
+Group={{ runner.group }}
+WorkingDirectory={{ runner_work_dir }}
+ExecStart={{ runner_work_dir }}/run.sh
+
+Restart=on-failure
+RestartSec=10
+
+KillSignal=SIGTERM
+
+StandardOut=journal
+StandardErr=journal
+
+[Install]
+WantedBy=multi-user.target
